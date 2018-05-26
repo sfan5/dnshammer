@@ -46,7 +46,7 @@ static std::vector<std::string> tokenize(const std::string &s)
 {
 	std::vector<std::string> ret;
 	std::string item;
-	for(auto c : s) {
+	for(char c : s) {
 		if(c == ' ' || c == '\t') {
 			if(!item.empty())
 				ret.emplace_back(item);
@@ -112,7 +112,7 @@ DecodeException::DecodeException(const char *file, int line, const char *func)
 
 void DNSName::encode(uostream &s) const
 {
-	for(auto lbl : labels) {
+	for(auto &lbl : labels) {
 		DECODE_ASSERT(lbl.size() < 64);
 		writeU8(s, lbl.size());
 		s.write((unsigned char*) lbl.c_str(), lbl.size());
@@ -151,7 +151,7 @@ std::string DNSName::toString() const
 	if(labels.empty())
 		return ".";
 	std::ostringstream oss;
-	for(auto lbl : labels)
+	for(auto &lbl : labels)
 		oss << lbl << ".";
 	return oss.str();
 }
@@ -160,7 +160,7 @@ void DNSName::parse(const std::string &s)
 {
 	labels.clear();
 	std::string lbl;
-	for(auto c : s) {
+	for(char c : s) {
 		if(c == '.') {
 			labels.emplace_back(lbl);
 			lbl = "";
@@ -293,7 +293,7 @@ void DNSPacket::encode(ustring *data) const
 	writeU16(s, 0);
 	writeU16(s, 0);
 	writeU16(s, 0);
-	for(auto q : questions)
+	for(auto &q : questions)
 		q.encode(s);
 
 	*data = s.str();

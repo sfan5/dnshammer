@@ -62,7 +62,7 @@ int query_main(std::ostream &outfile,
 {
 	std::vector<Entry*> &entries = g.entries;
 	entries.reserve(resolvers.size());
-	for(auto addr : resolvers)
+	for(auto &addr : resolvers)
 		entries.emplace_back(new Entry(addr));
 
 	g.sock = new Socket();
@@ -96,12 +96,12 @@ int query_main(std::ostream &outfile,
 	std::cerr << "Done!" << std::endl;
 	
 	int lost = 0;
-	for(auto e : entries)
+	for(auto &e : entries)
 		lost += e->countBits();
 	if(lost > 0)
 		std::cerr << "Warning: " << lost << " queries were lost (unanswered)." << std::endl;;
 
-	for(auto e : entries)
+	for(auto &e : entries)
 		delete e;
 	delete g.sock;
 	return 0;
@@ -143,7 +143,7 @@ static void recv_thread(std::ostream &outfile, uint32_t *n_recv, uint32_t *n_suc
 
 		bool has_records = check_answer(pkt);
 		if(has_records) {
-			for(auto a : pkt.answers)
+			for(auto &a : pkt.answers)
 				outfile << a.toString() << "\n";
 		}
 
