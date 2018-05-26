@@ -5,6 +5,7 @@
 #include <vector>
 #include <type_traits> // static_assert()
 #include <thread>
+#include <atomic>
 
 #include "query.hpp"
 #include "common.hpp"
@@ -25,9 +26,8 @@ struct Entry
 		0 = we got an answer with this req_id / nothing was ever sent
 		1 = packet with this req_id was sent
 		the index into the bitmap is the req_id
-		FIXME: we implicitly rely on |= and &= being atomic ops, this has no lock
 	*/
-	BITMAP_T sent;
+	std::atomic<BITMAP_T> sent;
 
 	Entry(const SocketAddress &addr);
 	inline void setSent(uint8_t req_id) { sent |= (1 << req_id); }
@@ -51,7 +51,7 @@ static bool check_answer(const DNSPacket &pkt);
 
 // global variables becaue std::thread() just throws pages of template errors
 static struct {
-	std::vector<Entry> entries;
+	std::vector<Entry*> entries;
 	Socket *sock;
 } g;
 
@@ -60,10 +60,10 @@ int query_main(std::ostream &outfile,
 	std::vector<SocketAddress> &resolvers,
 	std::vector<DNSQuestion> &queries)
 {
-	std::vector<Entry> &entries = g.entries;
+	std::vector<Entry*> &entries = g.entries;
 	entries.reserve(resolvers.size());
 	for(auto addr : resolvers)
-		entries.emplace_back(Entry(addr));
+		entries.emplace_back(new Entry(addr));
 
 	g.sock = new Socket();
 
@@ -97,10 +97,12 @@ int query_main(std::ostream &outfile,
 	
 	int lost = 0;
 	for(auto e : entries)
-		lost += e.countBits();
+		lost += e->countBits();
 	if(lost > 0)
 		std::cerr << "Warning: " << lost << " queries were lost (unanswered)." << std::endl;;
 
+	for(auto e : entries)
+		delete e;
 	delete g.sock;
 	return 0;
 }
@@ -147,7 +149,7 @@ static void recv_thread(std::ostream &outfile, uint32_t *n_recv, uint32_t *n_suc
 
 		uint16_t resolver_id = RESOLVER_ID(pkt.txid);
 		uint8_t req_id = REQ_ID(pkt.txid);
-		g.entries[resolver_id].setReceived(req_id);
+		g.entries[resolver_id]->setReceived(req_id);
 
 		*n_recv += 1;
 		*n_succ += has_records ? 1 : 0;
@@ -163,19 +165,19 @@ static void send_thread(const std::vector<DNSQuestion> *queries, unsigned concur
 	do {
 		bool any = false;
 		for(auto it = g.entries.begin(); it != g.entries.end(); it++) {
-			Entry &e = *it;
-			if(!e.needSend(concurrent))
+			Entry *e = *it;
+			if(!e->needSend(concurrent))
 				continue;
 
 			uint16_t resolver_id = it - g.entries.begin();
-			uint8_t req_id = e.freeId();
+			uint8_t req_id = e->freeId();
 
 			build_packet(*qit, &pkt, TXID(resolver_id, req_id));
 			qit++;
 
 			pkt.encode(&data);
-			g.sock->sendto(data, e.addr);
-			e.setSent(req_id);
+			g.sock->sendto(data, e->addr);
+			e->setSent(req_id);
 
 			any = true;
 			*n_sent += 1;
