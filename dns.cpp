@@ -148,6 +148,8 @@ void DNSName::decode(uistream &s, const ustring &whole_pkt, bool can_recurse)
 
 std::string DNSName::toString() const
 {
+	if(labels.empty())
+		return ".";
 	std::ostringstream oss;
 	for(auto lbl : labels)
 		oss << lbl << ".";
