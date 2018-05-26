@@ -45,3 +45,10 @@ DNSHammer keeps all queries in memory in a parsed state, this is not too memory-
 For example 500k IPv6 rDNS queries (`[...].ip6.arpa. IN PTR`) take roughly 500 MB.
 
 You'll just need to live with it.
+
+## How many resolvers do I need?
+
+I wrote this tool to mass-resolve reverse DNS of IPv6 hosts, and from experience
+2000 resolvers are enough to complete millions of DNS queries in reasonable time.
+
+So, most likely *few*.
