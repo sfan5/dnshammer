@@ -21,6 +21,6 @@ clean:
 	rm -f $(OBJ)
 
 install:
-	install -pDm755 dnsh $(DESTDIR)$(BINDIR)/dnsh
+	install -pDm755 dnshammer $(DESTDIR)$(BINDIR)/dnshammer
 
 .PHONY: all clean
