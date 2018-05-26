@@ -122,7 +122,8 @@ void DNSName::encode(uostream &s) const
 
 void DNSName::decode(uistream &s, const ustring &whole_pkt, bool can_recurse)
 {
-	labels.clear();
+	if(can_recurse)
+		labels.clear();
 	while(true) {
 		uint8_t c = readU8(s);
 		if((c & 0xc0) == 0xc0) { // message compression
