@@ -120,21 +120,20 @@ void DNSName::encode(uostream &s) const
 	writeU8(s, 0);
 }
 
-void DNSName::decode(uistream &s, const ustring &whole_pkt, bool can_recurse)
+void DNSName::decode(uistream &s, const ustring &whole_pkt, int recurse_depth)
 {
-	if(can_recurse)
+	if(recurse_depth == DNSNAME_RECURSE_DEPTH)
 		labels.clear();
 	while(true) {
 		uint8_t c = readU8(s);
 		if((c & 0xc0) == 0xc0) { // message compression
-			// TODO: nested compression is uncommon but allowed
-			DECODE_ASSERT(can_recurse);
+			DECODE_ASSERT(recurse_depth > 0);
 			uint16_t offset = (c << 8) | readU8(s);
 			offset &= ~0xc000;
 
 			DECODE_ASSERT(offset < whole_pkt.size());
 			uistringstream s2(whole_pkt.substr(offset, whole_pkt.size() - offset));
-			return decode(s2, whole_pkt, false);
+			return decode(s2, whole_pkt, recurse_depth - 1);
 		}
 		if(c == 0) // terminating zero-length label
 			break;

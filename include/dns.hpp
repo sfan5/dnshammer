@@ -22,11 +22,14 @@ private:
 	https://tools.ietf.org/html/rfc3596 IPv6 types
 */
 
+// not the standards-compliant way of parsing compression, but this eases a few things
+#define DNSNAME_RECURSE_DEPTH 10
+
 struct DNSName {
 	std::vector<std::string> labels;
 
 	void encode(uostream &s) const;
-	void decode(uistream &s, const ustring &whole_pkt, bool can_recurse=true);
+	void decode(uistream &s, const ustring &whole_pkt, int recurse_depth=DNSNAME_RECURSE_DEPTH);
 
 	std::string toString() const;
 	void parse(const std::string &s);
