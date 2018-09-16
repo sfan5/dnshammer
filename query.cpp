@@ -84,7 +84,7 @@ int query_main(std::ostream &outfile,
 	t_send.join();
 
 	// wait for the last queries to be answered
-	std::this_thread::sleep_for(std::chrono::seconds(4));
+	std::this_thread::sleep_for(std::chrono::seconds(6));
 
 	// close the socket to raise a SocketException inside recv_thread
 	g.sock->close();
