@@ -75,9 +75,20 @@ int query_main(std::ostream &outfile,
 	std::thread t_recv(recv_thread, std::ref(outfile), &n_recv, &n_succ);
 	std::thread t_send(send_thread, &queries, concurrent, &n_sent);
 
+	// TODO: hang detection with quiet=1
 	if(!quiet) {
+		uint32_t prev_n_sent = 0, hang_count = 0;
 		do {
+			if(n_sent == prev_n_sent) {
+				if(++hang_count == 8) {
+					std::cerr << std::endl << "Error: No resolvers are responding anymore, exiting." << std::endl;
+					outfile.flush();
+					_Exit(1); // hard exit, since we can't kill t_send
+				}
+			}
 			print_stats(n_sent, n_recv, n_succ);
+
+			prev_n_sent = n_sent;
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 		} while(n_sent < queries.size());
 	}
@@ -87,6 +98,7 @@ int query_main(std::ostream &outfile,
 	std::this_thread::sleep_for(std::chrono::seconds(6));
 
 	// close the socket to raise a SocketException inside recv_thread
+	// FIXME: this is not guaranteed to work at all, but it does for me
 	g.sock->close();
 	t_recv.join();
 
@@ -94,12 +106,12 @@ int query_main(std::ostream &outfile,
 	print_stats(n_sent, n_recv, n_succ);
 	std::cerr << std::endl << std::endl;
 	std::cerr << "Done!" << std::endl;
-	
+
 	int lost = 0;
 	for(auto &e : entries)
 		lost += e->countBits();
 	if(lost > 0)
-		std::cerr << "Warning: " << lost << " queries were lost (unanswered)." << std::endl;;
+		std::cerr << "Warning: " << lost << " queries were lost (unanswered)." << std::endl;
 
 	for(auto &e : entries)
 		delete e;
