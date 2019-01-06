@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <poll.h>
 
 #include "socket.hpp"
 
@@ -69,6 +70,19 @@ void Socket::recv(size_t n, ustring *data)
 	if(r == -1)
 		throw SocketException();
 	*data = ustring(buf, r);
+}
+
+short Socket::poll(short events, int timeout)
+{
+	struct pollfd pfd;
+	int r;
+	pfd.fd = fd;
+	pfd.events = events;
+	pfd.revents = 0;
+	r = ::poll(&pfd, 1, timeout);
+	if(r == -1)
+		throw SocketException();
+	return pfd.revents;
 }
 
 void Socket::close()

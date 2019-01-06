@@ -1,4 +1,5 @@
 #include <stdio.h> // snprintf()
+#include <poll.h> // POLL* constants
 #include <iostream>
 #include <fstream>
 #include <set>
@@ -97,8 +98,7 @@ int query_main(std::ostream &outfile,
 	// wait for the last queries to be answered
 	std::this_thread::sleep_for(std::chrono::seconds(6));
 
-	// close the socket to raise a SocketException inside recv_thread
-	// FIXME: this is not guaranteed to work at all, but it does for me
+	// close the socket and wait for t_recv to exit
 	g.sock->close();
 	t_recv.join();
 
@@ -137,11 +137,14 @@ static void recv_thread(std::ostream &outfile, uint32_t *n_recv, uint32_t *n_suc
 	DNSPacket pkt;
 
 	while(1) {
-		try {
-			g.sock->recv(4096, &data);
-		} catch(const SocketException &e) {
-			break;
+		{
+			short ev = g.sock->poll(POLLIN, 1000);
+			if(ev == 0)
+				continue;
+			else if(ev & POLLNVAL)
+				break; // we're done here
 		}
+		g.sock->recv(4096, &data);
 
 		try {
 			pkt.decode(data);

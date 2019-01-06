@@ -33,6 +33,7 @@ public:
 
 	void sendto(const ustring &data, const SocketAddress &host);
 	void recv(size_t n, ustring *data);
+	short poll(short events, int timeout);
 	void close();
 
 private:
