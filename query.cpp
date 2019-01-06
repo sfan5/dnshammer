@@ -76,8 +76,7 @@ int query_main(std::ostream &outfile,
 	std::thread t_recv(recv_thread, std::ref(outfile), &n_recv, &n_succ);
 	std::thread t_send(send_thread, &queries, concurrent, &n_sent);
 
-	// TODO: hang detection with quiet=1
-	if(!quiet) {
+	{
 		uint32_t prev_n_sent = 0, hang_count = 0;
 		do {
 			if(n_sent == prev_n_sent) {
@@ -87,7 +86,8 @@ int query_main(std::ostream &outfile,
 					_Exit(1); // hard exit, since we can't kill t_send
 				}
 			}
-			print_stats(n_sent, n_recv, n_succ);
+			if(!quiet)
+				print_stats(n_sent, n_recv, n_succ);
 
 			prev_n_sent = n_sent;
 			std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -96,7 +96,7 @@ int query_main(std::ostream &outfile,
 	t_send.join();
 
 	// wait for the last queries to be answered
-	std::this_thread::sleep_for(std::chrono::seconds(6));
+	std::this_thread::sleep_for(std::chrono::seconds(5));
 
 	// close the socket and wait for t_recv to exit
 	g.sock->close();
