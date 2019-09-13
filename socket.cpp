@@ -74,6 +74,8 @@ void Socket::recv(size_t n, ustring *data)
 
 short Socket::poll(short events, int timeout)
 {
+	if(fd == -1)
+		return POLLNVAL;
 	struct pollfd pfd;
 	int r;
 	pfd.fd = fd;
