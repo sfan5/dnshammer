@@ -23,19 +23,15 @@ By default it will try to always have 2 queries "waiting" (sent to the server) a
 Assuming an average response time of 50ms, this translates to 40 queries per second, which should be plenty.
 
 If you see too many lost queries (the percent value in the status message), you may want to use `-c 1`.
-Alternatively, if you need it to go even faster you can up the number of concurrent queries,
-but be prepared for a higher amount of lost queries.
+Though, this doesn't matter as much since DNSHammer automatically throttles (see below).
 
 ## What if some resolvers stop working / have rate limits?
 
-Per the answer above, DNSHammer sends the next query as soon as a previous query is answered.
+Queries which do no receive an answer (time out) are retried with a different resolver.
+The timeout for each DNS query is 3 seconds.
 
-This also means that if a resolver does not respond to a query, DNSHammer will not send a new query.
-Because the design is kept simple, DNSHammer doesn't know *which* queries failed,
-but it will tell you how many were lost when it's finished.
-
-The same applies to ratelimits, if a resolver drops a (single) query
-DNSHammer will continue querying it, just with one concurrent query less than before.
+If a resolver drops a (single) query, DNSHammer will continue querying it, just with one concurrent query less than before.
+This means non-functional resolvers are automatically weeded out without impacting the quality of the results.
 
 ## Which DNS types are supported?
 

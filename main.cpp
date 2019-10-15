@@ -40,10 +40,8 @@ int main(int argc, char *argv[])
 				concurrent = -1;
 				iss >> concurrent;
 
-				unsigned max = (1 << TXID_COUNTER_BITS);
-				if(concurrent < 1 || concurrent >= max) {
-					std::cerr << "Invalid value for --concurrent, allowed range is [0, "
-						<< max << "[." << std::endl;
+				if(concurrent < 1) {
+					std::cerr << "Invalid value for --concurrent." << std::endl;
 					return 1;
 				}
 				break;
@@ -94,11 +92,8 @@ int main(int argc, char *argv[])
 		std::cerr << "At least one query is required." << std::endl;
 		return 1;
 	}
-	unsigned limit = 1 << (16 - TXID_COUNTER_BITS);
 	if(resolvers.empty()) {
 		std::cerr << "At least one resolver is required." << std::endl;
-	} else if(resolvers.size() >= limit) {
-		std::cerr << "At most " << limit << " resolvers are possible" << std::endl;
 		return 1;
 	}
 
