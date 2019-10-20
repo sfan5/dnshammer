@@ -28,12 +28,12 @@ Though, this doesn't matter as much since DNSHammer automatically throttles (see
 ## What if some resolvers stop working / have rate limits?
 
 Queries which do no receive an answer (time out) are retried with a different resolver.
-The timeout for each DNS query is 3 seconds.
+The timeout for each DNS query is 6 seconds.
 
 If a resolver drops a (single) query, DNSHammer will continue querying it, just with one concurrent query less than before.
-This means non-functional resolvers are automatically weeded out without impacting the quality of the results.
+This means non-functional resolvers are automatically "weeded out" without impacting the quality of the results.
 
-## Which DNS types are supported?
+## Which DNS record types are supported?
 
 Queries can use everything you usually see in DNS (except for DNSSEC stuff).
 

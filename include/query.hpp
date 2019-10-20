@@ -7,7 +7,7 @@
 struct SocketAddress;
 struct DNSQuestion;
 
-#define TIMEOUT_SEC 3
+#define TIMEOUT_SEC 6
 
 int query_main(std::ostream &outfile,
 	bool quiet, unsigned concurrent,

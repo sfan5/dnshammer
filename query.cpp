@@ -169,7 +169,7 @@ static void recv_thread(std::ostream &outfile, uint32_t *n_recv, uint32_t *n_suc
 			MutexAutoLock alock(g.mtx);
 			auto it = g.pending.find(pkt.txid);
 			if(it == g.pending.end()) {
-				std::cerr << "Unexpected answer txid (SHOULD NOT HAPPEN!)" << std::endl;
+				std::cerr << "Unexpected answer txid (late answer?)" << std::endl;
 				continue;
 			}
 
@@ -252,7 +252,7 @@ retry_txid:
 		}
 		if(!any) {
 			std::cerr << "No free query txid (should usually not happen)" << std::endl;
-			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			goto retry_txid;
 		}
 
