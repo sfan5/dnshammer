@@ -122,6 +122,15 @@ static void usage(void)
 
 static const std::set<char> whitespace{' ', '\t', '\r', '\n'};
 
+static inline bool is_ip_duplicate(const SocketAddress &search, const std::vector<SocketAddress> &in)
+{
+	for(const auto &addr : in) {
+		if(!memcmp(&addr.addr.sin6_addr.s6_addr, &search.addr.sin6_addr.s6_addr, 16))
+			return true;
+	}
+	return false;
+}
+
 static bool parse_resolver_list(std::istream &s, std::vector<SocketAddress> &res)
 {
 	while(1) {
@@ -142,6 +151,11 @@ static bool parse_resolver_list(std::istream &s, std::vector<SocketAddress> &res
 			return false;
 		}
 		addr.setPort(53); // TODO: make this configurable?
+
+		if(is_ip_duplicate(addr, res)) {
+			std::cerr << "Resolver addresses maybe not be duplicate" << std::endl;
+			return false;
+		}
 
 		res.emplace_back(addr);
 	}

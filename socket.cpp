@@ -7,6 +7,11 @@
 
 #include "socket.hpp"
 
+ustring SocketAddress::getIPBytes() const
+{
+	return ustring(addr.sin6_addr.s6_addr, 16);
+}
+
 bool SocketAddress::parseIP(const std::string &s)
 {
 	int r;
@@ -62,11 +67,12 @@ void Socket::sendto(const ustring &data, const struct SocketAddress &host)
 		throw SocketException();
 }
 
-void Socket::recv(size_t n, ustring *data)
+void Socket::recvfrom(size_t n, ustring *data, struct SocketAddress &source)
 {
 	unsigned char buf[n];
 	ssize_t r;
-	r = ::recv(fd, buf, n, 0);
+	socklen_t addrlen = sizeof(source.addr);
+	r = ::recvfrom(fd, buf, n, 0, (struct sockaddr*) &source.addr, &addrlen);
 	if(r == -1)
 		throw SocketException();
 	*data = ustring(buf, r);

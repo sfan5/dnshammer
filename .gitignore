@@ -1,2 +1,4 @@
 *.o
-dnshammer
+*.txt
+/dnshammer
+.vscode

@@ -20,6 +20,7 @@ private:
 struct SocketAddress {
 	struct sockaddr_in6 addr = { 0 };
 
+	ustring getIPBytes() const;
 	bool parseIP(const std::string &s);
 	int getPort() const;
 	void setPort(int port);
@@ -32,7 +33,7 @@ public:
 	~Socket();
 
 	void sendto(const ustring &data, const SocketAddress &host);
-	void recv(size_t n, ustring *data);
+	void recvfrom(size_t n, ustring *data, struct SocketAddress &source);
 	short poll(short events, int timeout);
 	void close();
 

@@ -6,7 +6,7 @@ CXXFLAGS += -O2 -g
 PREFIX ?= /usr
 BINDIR ?= $(PREFIX)/bin
 
-SRC = socket.cpp dns.cpp query.cpp main.cpp
+SRC = socket.cpp dns.cpp query.cpp backend.cpp main.cpp
 OBJ = $(addsuffix .o, $(basename $(SRC)))
 
 all: dnshammer
