@@ -17,30 +17,21 @@ using MutexAutoLock = std::unique_lock<std::mutex>;
 static inline time_t clock_monotonic();
 static inline ustring encode_u16(uint16_t v);
 
-struct QueuedQuery
-{
-	DNSQuestion question;
-	size_t id;
-
-	QueuedQuery(const DNSQuestion &question, size_t id)
-	: question(question), id(id) {}
-};
-
 struct PendingQuery
 {
-	size_t id;
+	QueryID id;
 	size_t resolver_id;
 	time_t time_sent;
 
-	PendingQuery(const QueuedQuery &queued, size_t resolver_id) :
-		id(queued.id), resolver_id(resolver_id) {
+	PendingQuery(QueryID id, size_t resolver_id) :
+		id(id), resolver_id(resolver_id) {
 		time_sent = clock_monotonic();
 	}
 };
 
 QueryBackend::QueryBackend(const std::vector<SocketAddress> &resolvers,
-	unsigned concurrent, time_t timeout)
-	: timeout(timeout)
+	unsigned concurrent, time_t timeout, bool timeout_keep_cap)
+	: timeout(timeout), timeout_keep_cap(timeout_keep_cap)
 {
 	this->resolvers.reserve(resolvers.size());
 	for(auto &addr : resolvers)
@@ -48,18 +39,20 @@ QueryBackend::QueryBackend(const std::vector<SocketAddress> &resolvers,
 }
 
 void QueryBackend::setCallbacks(
-	std::function<void(const DNSPacket&, size_t)> callback,
-	std::function<void(size_t)> callback_timeout)
+	std::function<DNSQuestion(QueryID)> callback_question,
+	std::function<void(const DNSPacket&, QueryID)> callback_answer,
+	std::function<void(QueryID)> callback_timeout)
 {
-	this->callback = callback;
+	this->callback_question = callback_question;
+	this->callback_answer = callback_answer;
 	this->callback_timeout = callback_timeout;
 }
 
-void QueryBackend::queue(const DNSQuestion &question, size_t id)
+void QueryBackend::queue(QueryID id)
 {
 	MutexAutoLock alock(mtx);
 
-	send_queue.emplace_back(new QueuedQuery(question, id));
+	send_queue.emplace_back(id);
 }
 
 void QueryBackend::start()
@@ -136,13 +129,11 @@ void QueryBackend::recv_thread()
 			}
 			p = it->second;
 			pending.erase(it);
+
+			resolvers[p->resolver_id].restoreCapacity();
 		}
 
-		// restore resolver capacity
-		size_t resolver_id = p->resolver_id;
-		resolvers[resolver_id].restoreCapacity();
-
-		callback(pkt, p->id);
+		callback_answer(pkt, p->id);
 		delete p;
 
 		n_recv++;
@@ -158,11 +149,13 @@ void QueryBackend::send_thread()
 	pkt.flags = 0x0100; // QUERY opcode, RD=1
 
 	do {
-		QueuedQuery *q = nullptr;
+		QueryID id = 0; // shut up gcc
+		bool any;
 		{
 			MutexAutoLock alock(mtx);
-			if(!send_queue.empty()) {
-				q = send_queue.front();
+			any = !send_queue.empty();
+			if(any) {
+				id = send_queue.front();
 				send_queue.pop_front();
 				n_queue = send_queue.size();
 			} else {
@@ -172,7 +165,7 @@ void QueryBackend::send_thread()
 
 		if(should_exit)
 			break;
-		if(!q) {
+		if(!any) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(25));
 			continue;
 		}
@@ -180,7 +173,7 @@ void QueryBackend::send_thread()
 		// find resolver with capacity
 retry_resolver:
 		size_t start = resolver_id;
-		bool any = false;
+		any = false;
 		{
 			MutexAutoLock alock(mtx);
 			do {
@@ -204,16 +197,15 @@ retry_resolver:
 		// build and send the packet
 		pkt.txid = txid;
 		pkt.questions.clear();
-		pkt.questions.emplace_back(q->question);
+		pkt.questions.emplace_back(callback_question(id));
 		pkt.encode(&data);
 		sock.sendto(data, res.addr);
 
 		const ustring key = res.addr.getIPBytes() + encode_u16(pkt.txid);
 		{
 			MutexAutoLock alock(mtx);
-			pending.emplace(key, new PendingQuery(*q, resolver_id));
+			pending.emplace(key, new PendingQuery(id, resolver_id));
 		}
-		delete q;
 
 		n_sent++;
 	} while(1);
@@ -228,12 +220,14 @@ again:
 		mtx.lock();
 		for(auto it = pending.begin(); it != pending.end(); it++) {
 			if(it->second->time_sent <= cutoff) {
-				PendingQuery *q = it->second;
+				PendingQuery *p = it->second;
 				pending.erase(it);
+				if(timeout_keep_cap)
+					resolvers[p->resolver_id].restoreCapacity();
 				mtx.unlock();
 
-				callback_timeout(q->id);
-				delete q;
+				callback_timeout(p->id);
+				delete p;
 
 				goto again; // iterate again immediately
 			}

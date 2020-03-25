@@ -21,7 +21,10 @@ int query_main(std::ostream &outfile,
 	QueryBackend backend(resolvers, concurrent, TIMEOUT_SEC);
 
 	uint32_t n_succ = 0;
-	auto cb = [&] (const DNSPacket &pkt, size_t id) {
+	auto cb_query = [&] (QueryID id) -> DNSQuestion {
+		return queries[id];
+	};
+	auto cb_answer = [&] (const DNSPacket &pkt, QueryID id) {
 		bool has_records = check_answer(pkt);
 		if(has_records) {
 			for(auto &a : pkt.answers)
@@ -29,14 +32,14 @@ int query_main(std::ostream &outfile,
 		}
 		n_succ += has_records ? 1 : 0;
 	};
-	auto cb_timeout = [&] (size_t id) {
+	auto cb_timeout = [&] (QueryID id) {
 		// retry query
-		backend.queue(queries[id], id);
+		backend.queue(id);
 	};
-	backend.setCallbacks(cb, cb_timeout);
+	backend.setCallbacks(cb_query, cb_answer, cb_timeout);
 
 	for(size_t i = 0; i < queries.size(); i++)
-		backend.queue(queries[i], i);
+		backend.queue(i);
 
 	std::cerr << "Running with " << resolvers.size() << " resolvers and " << queries.size() << " queries." << std::endl;
 	std::cerr << std::endl;

@@ -11,6 +11,8 @@
 
 #include "socket.hpp"
 
+using QueryID = intptr_t;
+
 struct SocketAddress;
 struct DNSQuestion;
 struct DNSPacket;
@@ -32,18 +34,19 @@ struct Resolver
 	inline void restoreCapacity() { capacity++; }
 	inline uint16_t nextTxid() { return txid++; }
 };
-struct QueuedQuery;
 struct PendingQuery;
 
 class QueryBackend {
 public:
 	QueryBackend(const std::vector<SocketAddress> &resolvers,
-		unsigned concurrent, time_t timeout);
+		unsigned concurrent, time_t timeout, bool timeout_keep_cap=false);
 
-	void setCallbacks(std::function<void(const DNSPacket&, size_t)> callback,
-		std::function<void(size_t)> callback_timeout);
+	void setCallbacks(
+		std::function<DNSQuestion(QueryID)> callback_question,
+		std::function<void(const DNSPacket&, QueryID)> callback_answer,
+		std::function<void(QueryID)> callback_timeout);
 
-	void queue(const DNSQuestion &question, size_t id);
+	void queue(QueryID id);
 
 	void start();
 	void getStats(uint32_t *n_sent, uint32_t *n_queue, uint32_t *n_recv,
@@ -57,18 +60,20 @@ private:
 
 	Socket sock;
 	time_t timeout;
+	bool timeout_keep_cap;
 
 	std::atomic<uint32_t> n_sent, n_recv;
 	uint32_t n_queue;
 	bool should_exit;
 	std::thread *t_recv = nullptr, *t_send = nullptr, *t_timeout = nullptr;
 
-	std::function<void(const DNSPacket&, size_t)> callback = nullptr;
-	std::function<void(size_t)> callback_timeout = nullptr;
+	std::function<DNSQuestion(QueryID)> callback_question = nullptr;
+	std::function<void(const DNSPacket&, QueryID)> callback_answer = nullptr;
+	std::function<void(QueryID)> callback_timeout = nullptr;
 
 	std::mutex mtx;
 	std::vector<Resolver> resolvers;
-	std::deque<QueuedQuery*> send_queue;
+	std::deque<QueryID> send_queue;
 	std::unordered_map<ustring, PendingQuery*> pending;
 };
 
