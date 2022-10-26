@@ -2,6 +2,12 @@
 
 Need to hit lots of nails at once? Just use a big hammer.
 
+## ----
+
+### You should probably use [MassDNS](https://github.com/blechschmidt/massdns) instead, someone else had the same idea but better.
+
+## ----
+
 ## How do I use this?
 
 First, you need a list of working DNS resolvers.
